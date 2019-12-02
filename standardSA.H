@@ -37,6 +37,17 @@ Description
 
     The model is implemented with the trip-term, considered as standard.
 
+    Extended according to:
+    \verbatim
+        Allmaras, S. R., Johnson, F. T., & Spalart, P. R. (2012).
+        Modifications and Clarifications for the Implementation of the
+        Spalart-Allmaras Turbulence Model.
+        ICCFD7-1902, 7th International Conference on Computational Fluid
+        Dynamics, Big Island, Hawaii, 9-13 July 2012.
+    \endverbatim
+
+    using the optional flag \c neg
+
     It is necessary to limit the Stilda generation term as the model generates
     unphysical results if this term becomes negative which occurs for complex
     flow.  Several approaches have been proposed to limit Stilda but it is not
@@ -55,6 +66,7 @@ Description
             Cv1         7.1;
             Ct3         1.2;
             Ct4         0.5;
+            Cn1         16.0;
             Cs          0.3;
             sigmaNut    0.66666;
             kappa       0.41;
@@ -105,7 +117,12 @@ protected:
             dimensionedScalar Cv1_;
             dimensionedScalar Ct3_;
             dimensionedScalar Ct4_;
+            dimensionedScalar Cn1_;
             dimensionedScalar Cs_;
+
+
+        //- Optional flag to activate the negative nuTilda model
+            Switch neg_;
 
 
         // Fields
@@ -130,7 +147,7 @@ protected:
             const volScalarField& fv1
         ) const;
 
-        tmp<volScalarField> ft2(const volScalarField& chi) const;        
+        tmp<volScalarField> ft2(const volScalarField& chi) const;
 
         tmp<volScalarField> Stilda
         (
@@ -185,7 +202,7 @@ public:
         virtual bool read();
 
         //- Return the effective diffusivity for nuTilda
-        tmp<volScalarField> DnuTildaEff() const;
+        tmp<volScalarField> DnuTildaEff(const volScalarField& chi) const;
 
         //- Return the turbulence kinetic energy
         virtual tmp<volScalarField> k() const;

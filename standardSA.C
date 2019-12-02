@@ -135,6 +135,10 @@ void standardSA<BasicTurbulenceModel>::correctNut
 )
 {
     this->nut_ = nuTilda_*fv1;
+    if (neg_)
+    {
+        bound(this->nut_, dimensionedScalar("0", this->nut_.dimensions(), 0.0));
+    }
     this->nut_.correctBoundaryConditions();
     fv::options::New(this->mesh_).correct(this->nut_);
 
@@ -259,6 +263,15 @@ standardSA<BasicTurbulenceModel>::standardSA
             0.5
         )
     ),
+    Cn1_
+    (
+        dimensioned<scalar>::lookupOrAddToDict
+        (
+            "Cn1",
+            this->coeffDict_,
+            16.0
+        )
+    ),
     Cs_
     (
         dimensioned<scalar>::lookupOrAddToDict
@@ -267,6 +280,11 @@ standardSA<BasicTurbulenceModel>::standardSA
             this->coeffDict_,
             0.3
         )
+    ),
+
+    neg_
+    (
+        this->coeffDict_.lookupOrDefault("neg", false)
     ),
 
     nuTilda_
@@ -287,6 +305,10 @@ standardSA<BasicTurbulenceModel>::standardSA
     if (type == typeName)
     {
         this->printCoeffs(type);
+    }
+    if (neg_)
+    {
+        Info<< "Enabling negative nuTilda" << endl;
     }
 }
 
@@ -309,7 +331,13 @@ bool standardSA<BasicTurbulenceModel>::read()
         Cv1_.readIfPresent(this->coeffDict());
         Ct3_.readIfPresent(this->coeffDict());
         Ct4_.readIfPresent(this->coeffDict());
+        Cn1_.readIfPresent(this->coeffDict());
         Cs_.readIfPresent(this->coeffDict());
+
+        neg_.readIfPresent
+        (
+            "neg", this->coeffDict()
+        );
 
         return true;
     }
@@ -321,12 +349,22 @@ bool standardSA<BasicTurbulenceModel>::read()
 
 
 template<class BasicTurbulenceModel>
-tmp<volScalarField> standardSA<BasicTurbulenceModel>::DnuTildaEff() const
+tmp<volScalarField> standardSA<BasicTurbulenceModel>::DnuTildaEff
+(
+    const volScalarField& chi
+) const
 {
+    volScalarField chi3(pow3(chi));
+    volScalarField fn
+    (
+        pos(chi) + neg(chi)*(Cn1_ + chi3)/(Cn1_ - chi3)
+    );
+
+
     return volScalarField::New
     (
         "DnuTildaEff",
-        (nuTilda_ + this->nu())/sigmaNut_
+        (nuTilda_*fn + this->nu())/sigmaNut_
     );
 }
 
@@ -380,17 +418,27 @@ void standardSA<BasicTurbulenceModel>::correct()
     const volScalarField fv1(this->fv1(chi));
 
     const volScalarField Stilda(this->Stilda(chi, fv1));
+    const volScalarField Omega(::sqrt(2.0)*mag(skew(fvc::grad(this->U_))));
+
 
     tmp<fvScalarMatrix> nuTildaEqn
     (
         fvm::ddt(alpha, rho, nuTilda_)
       + fvm::div(alphaRhoPhi, nuTilda_)
-      - fvm::laplacian(alpha*rho*DnuTildaEff(), nuTilda_)
+      - fvm::laplacian(alpha*rho*DnuTildaEff(chi), nuTilda_)
       - Cb2_/sigmaNut_*alpha*rho*magSqr(fvc::grad(nuTilda_))
      ==
-        Cb1_*(1.0-ft2(chi))*alpha*rho*Stilda*nuTilda_
-      - fvm::Sp((Cw1_*alpha*rho*fw(Stilda)*nuTilda_
-      - Cb1_*alpha*rho*ft2(chi)*nuTilda_/sqr(kappa_))/sqr(y_), nuTilda_)
+        pos(nuTilda_)
+      * (
+            Cb1_*(1.0-ft2(chi))*alpha*rho*Stilda*nuTilda_
+          - fvm::Sp((Cw1_*alpha*rho*fw(Stilda)*nuTilda_
+          - Cb1_*alpha*rho*ft2(chi)*nuTilda_/sqr(kappa_))/sqr(y_), nuTilda_)
+        )
+      + neg(nuTilda_)
+      * (
+            Cb1_*(1.0 - Ct3_)*alpha*rho*Omega*nuTilda_
+          + fvm::Sp(Cw1_*alpha*rho*nuTilda_/sqr(y_), nuTilda_)
+        )
       + fvOptions(alpha, rho, nuTilda_)
     );
 
@@ -398,7 +446,10 @@ void standardSA<BasicTurbulenceModel>::correct()
     fvOptions.constrain(nuTildaEqn.ref());
     solve(nuTildaEqn);
     fvOptions.correct(nuTilda_);
-    bound(nuTilda_, dimensionedScalar(nuTilda_.dimensions(), 0));
+    if (!neg_)
+    {
+        bound(nuTilda_, dimensionedScalar(nuTilda_.dimensions(), 0));
+    }
     nuTilda_.correctBoundaryConditions();
 
     correctNut(fv1);
