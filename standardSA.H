@@ -35,7 +35,8 @@ Description
         La Recherche Aerospatiale, 1, 5-21.
     \endverbatim
 
-    The model is implemented with the trip-term, considered as standard.
+    The model is implemented without the trip-term, but maintaining the ft2
+    term, considered as standard.
 
     Extended according to:
     \verbatim
