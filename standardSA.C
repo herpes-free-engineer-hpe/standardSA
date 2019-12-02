@@ -85,16 +85,27 @@ tmp<volScalarField> standardSA<BasicTurbulenceModel>::Stilda
 ) const
 {
     volScalarField Omega(::sqrt(2.0)*mag(skew(fvc::grad(this->U_))));
+    volScalarField Sbar(fv2(chi, fv1)*nuTilda_/sqr(kappa_*y_));
 
-    return
-    (
-        max
+    if (neg_ && (Sbar < -0.7*Omega))
+    {
+        return
         (
-            Omega
-          + fv2(chi, fv1)*nuTilda_/sqr(kappa_*y_),
-            Cs_*Omega
-        )
-    );
+            Omega*(Omega*(pow(0.7,2)*Omega + 0.9*Sbar))
+           /((0.9 - 2*0.7)*Omega - Sbar)
+        );
+    }
+    else
+    {
+        return
+        (
+            max
+            (
+                Omega + Sbar,
+                Cs_*Omega
+            )
+        );
+    }
 }
 
 

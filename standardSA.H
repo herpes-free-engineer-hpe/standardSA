@@ -149,6 +149,12 @@ protected:
 
         tmp<volScalarField> ft2(const volScalarField& chi) const;
 
+        tmp<volScalarField> Sbar
+        (
+            const volScalarField& chi,
+            const volScalarField& fv1
+        ) const;
+
         tmp<volScalarField> Stilda
         (
             const volScalarField& chi,
