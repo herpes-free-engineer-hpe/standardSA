@@ -87,12 +87,18 @@ tmp<volScalarField> standardSA<BasicTurbulenceModel>::Stilda
     volScalarField Omega(::sqrt(2.0)*mag(skew(fvc::grad(this->U_))));
     volScalarField Sbar(fv2(chi, fv1)*nuTilda_/sqr(kappa_*y_));
 
-    if (neg_ && (Sbar < -0.7*Omega))
+    if (neg_)
     {
         return
         (
-            Omega*(Omega*(pow(0.7,2)*Omega + 0.9*Sbar))
-           /((0.9 - 2*0.7)*Omega - Sbar)
+            Omega
+          + pos(C2_*Omega + Sbar)*Sbar
+          + neg(C2_*Omega + Sbar)*(Omega*(pow(C2_,2)*Omega + C3_*Sbar))
+           /max
+            (
+                ((C3_ - 2*C2_)*Omega - Sbar),
+                dimensionedScalar(Omega.dimensions(), small)
+            )
         );
     }
     else
@@ -148,7 +154,7 @@ void standardSA<BasicTurbulenceModel>::correctNut
     this->nut_ = nuTilda_*fv1;
     if (neg_)
     {
-        bound(this->nut_, dimensionedScalar("0", this->nut_.dimensions(), 0.0));
+        bound(this->nut_, dimensionedScalar(this->nut_.dimensions(), 0));
     }
     this->nut_.correctBoundaryConditions();
     fv::options::New(this->mesh_).correct(this->nut_);
@@ -292,6 +298,24 @@ standardSA<BasicTurbulenceModel>::standardSA
             0.3
         )
     ),
+    C2_
+    (
+        dimensioned<scalar>::lookupOrAddToDict
+        (
+            "C2",
+            this->coeffDict_,
+            0.7
+        )
+    ),
+    C3_
+    (
+        dimensioned<scalar>::lookupOrAddToDict
+        (
+            "C3",
+            this->coeffDict_,
+            0.9
+        )
+    ),
 
     neg_
     (
@@ -344,6 +368,8 @@ bool standardSA<BasicTurbulenceModel>::read()
         Ct4_.readIfPresent(this->coeffDict());
         Cn1_.readIfPresent(this->coeffDict());
         Cs_.readIfPresent(this->coeffDict());
+        C2_.readIfPresent(this->coeffDict());
+        C3_.readIfPresent(this->coeffDict());
 
         neg_.readIfPresent
         (
@@ -463,7 +489,7 @@ void standardSA<BasicTurbulenceModel>::correct()
     }
     nuTilda_.correctBoundaryConditions();
 
-    correctNut(fv1);
+    correctNut();
 }
 
 
