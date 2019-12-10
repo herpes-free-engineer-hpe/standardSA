@@ -72,6 +72,8 @@ Description
             Cs          0.3;
             sigmaNut    0.66666;
             kappa       0.41;
+
+            neg         false;
         }
     \endverbatim
 
