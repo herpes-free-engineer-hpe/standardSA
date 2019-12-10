@@ -65,14 +65,16 @@ Description
             Cw2         0.3;
             Cw3         2.0;
             Cv1         7.1;
+            Cv2         0.7;
+            Cv3         0.9;
             Ct3         1.2;
             Ct4         0.5;
             Cn1         16.0;
             Cs          0.3;
-            C2          0.7;
-            C3          0.9;
             sigmaNut    0.66666;
             kappa       0.41;
+
+            neg         false;
         }
     \endverbatim
 
@@ -118,12 +120,12 @@ protected:
             dimensionedScalar Cw2_;
             dimensionedScalar Cw3_;
             dimensionedScalar Cv1_;
+            dimensionedScalar Cv2_;
+            dimensionedScalar Cv3_;
             dimensionedScalar Ct3_;
             dimensionedScalar Ct4_;
             dimensionedScalar Cn1_;
             dimensionedScalar Cs_;
-            dimensionedScalar C2_;
-            dimensionedScalar C3_;
 
 
         //- Optional flag to activate the negative nuTilda model

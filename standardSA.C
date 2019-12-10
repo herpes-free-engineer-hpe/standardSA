@@ -92,13 +92,9 @@ tmp<volScalarField> standardSA<BasicTurbulenceModel>::Stilda
         return
         (
             Omega
-          + pos(C2_*Omega + Sbar)*Sbar
-          + neg(C2_*Omega + Sbar)*(Omega*(pow(C2_,2)*Omega + C3_*Sbar))
-           /max
-            (
-                ((C3_ - 2*C2_)*Omega - Sbar),
-                dimensionedScalar(Omega.dimensions(), small)
-            )
+          + pos(Cv2_*Omega + Sbar)*Sbar
+          + neg(Cv2_*Omega + Sbar)*(Omega*(sqr(Cv2_)*Omega + Cv3_*Sbar))
+           /((Cv3_ - 2*Cv2_)*Omega - Sbar)
         );
     }
     else
@@ -262,6 +258,24 @@ standardSA<BasicTurbulenceModel>::standardSA
             7.1
         )
     ),
+    Cv2_
+    (
+        dimensioned<scalar>::lookupOrAddToDict
+        (
+            "Cv2",
+            this->coeffDict_,
+            0.7
+        )
+    ),
+    Cv3_
+    (
+        dimensioned<scalar>::lookupOrAddToDict
+        (
+            "Cv3",
+            this->coeffDict_,
+            0.9
+        )
+    ),
     Ct3_
     (
         dimensioned<scalar>::lookupOrAddToDict
@@ -296,24 +310,6 @@ standardSA<BasicTurbulenceModel>::standardSA
             "Cs",
             this->coeffDict_,
             0.3
-        )
-    ),
-    C2_
-    (
-        dimensioned<scalar>::lookupOrAddToDict
-        (
-            "C2",
-            this->coeffDict_,
-            0.7
-        )
-    ),
-    C3_
-    (
-        dimensioned<scalar>::lookupOrAddToDict
-        (
-            "C3",
-            this->coeffDict_,
-            0.9
         )
     ),
 
@@ -364,12 +360,12 @@ bool standardSA<BasicTurbulenceModel>::read()
         Cw2_.readIfPresent(this->coeffDict());
         Cw3_.readIfPresent(this->coeffDict());
         Cv1_.readIfPresent(this->coeffDict());
+        Cv2_.readIfPresent(this->coeffDict());
+        Cv3_.readIfPresent(this->coeffDict());
         Ct3_.readIfPresent(this->coeffDict());
         Ct4_.readIfPresent(this->coeffDict());
         Cn1_.readIfPresent(this->coeffDict());
         Cs_.readIfPresent(this->coeffDict());
-        C2_.readIfPresent(this->coeffDict());
-        C3_.readIfPresent(this->coeffDict());
 
         neg_.readIfPresent
         (
@@ -467,7 +463,7 @@ void standardSA<BasicTurbulenceModel>::correct()
      ==
         pos(nuTilda_)
       * (
-            Cb1_*(1.0-ft2(chi))*alpha*rho*Stilda*nuTilda_
+            Cb1_*(1.0 - ft2(chi))*alpha*rho*Stilda*nuTilda_
           - fvm::Sp((Cw1_*alpha*rho*fw(Stilda)*nuTilda_
           - Cb1_*alpha*rho*ft2(chi)*nuTilda_/sqr(kappa_))/sqr(y_), nuTilda_)
         )
@@ -489,7 +485,7 @@ void standardSA<BasicTurbulenceModel>::correct()
     }
     nuTilda_.correctBoundaryConditions();
 
-    correctNut();
+    correctNut(fv1);
 }
 
 
